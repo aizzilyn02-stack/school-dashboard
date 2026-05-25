@@ -63,10 +63,13 @@ if (!empty(getenv('VERCEL'))) {
 $app = require_once __DIR__.'/../bootstrap/app.php';
 
 if (! empty(getenv('VERCEL'))) {
-    // Ensure serverless Vercel deployment uses cookie sessions instead of database sessions.
-    $config = $app->make('config');
-    $config->set('session.driver', 'cookie');
-    $config->set('database.connections.sqlite.database', $tmpDatabase);
+    $app->afterBootstrapping(
+        \Illuminate\Foundation\Bootstrap\LoadConfiguration::class,
+        function () use ($app, $tmpDatabase) {
+            $app['config']->set('session.driver', 'cookie');
+            $app['config']->set('database.connections.sqlite.database', $tmpDatabase);
+        }
+    );
 }
 
 $app->handleRequest(Request::capture());
