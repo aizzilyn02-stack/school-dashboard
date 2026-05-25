@@ -6,10 +6,13 @@
             "runtime": "vercel-php@0.7.4"
         }
     },
-    "rewrites": [
+    "routes": [
         {
-            "source": "/(?!build/|favicon\\.ico|favicon\\.svg|robots\\.txt|apple-touch-icon\\.png|apple-touch-icon-precomposed\\.png|_boost/).*",
-            "destination": "/api/lambda.php"
+            "handle": "filesystem"
+        },
+        {
+            "src": "^/(.*)$",
+            "dest": "/api/lambda.php"
         }
     ]
 }
