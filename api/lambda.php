@@ -21,22 +21,36 @@ if (!empty(getenv('VERCEL'))) {
         $_SERVER['LOG_CHANNEL'] = 'errorlog';
     }
 
-    $requestedDatabase = getenv('DB_DATABASE');
-    if ($requestedDatabase === false || $requestedDatabase === '' || str_contains($requestedDatabase, 'database/database.sqlite')) {
-        $tmpDatabase = '/tmp/database.sqlite';
-        if (!file_exists($tmpDatabase)) {
-            $sourceDatabase = __DIR__.'/../database/database.sqlite';
-            if (file_exists($sourceDatabase)) {
-                copy($sourceDatabase, $tmpDatabase);
-            } else {
-                touch($tmpDatabase);
+    $sourceDatabase = __DIR__.'/../database/database.sqlite';
+    $tmpDatabase = '/tmp/database.sqlite';
+    if (file_exists($sourceDatabase)) {
+        $shouldCopy = false;
+        if (!file_exists($tmpDatabase) || filesize($tmpDatabase) === 0) {
+            $shouldCopy = true;
+        } elseif (filemtime($sourceDatabase) > filemtime($tmpDatabase)) {
+            $shouldCopy = true;
+        } else {
+            try {
+                $db = new PDO("sqlite:$tmpDatabase");
+                $stmt = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='sessions'");
+                if (! $stmt || $stmt->fetchColumn() === false) {
+                    $shouldCopy = true;
+                }
+            } catch (Throwable) {
+                $shouldCopy = true;
             }
         }
 
-        putenv("DB_DATABASE=$tmpDatabase");
-        $_ENV['DB_DATABASE'] = $tmpDatabase;
-        $_SERVER['DB_DATABASE'] = $tmpDatabase;
+        if ($shouldCopy) {
+            copy($sourceDatabase, $tmpDatabase);
+        }
+    } elseif (!file_exists($tmpDatabase)) {
+        touch($tmpDatabase);
     }
+
+    putenv("DB_DATABASE=$tmpDatabase");
+    $_ENV['DB_DATABASE'] = $tmpDatabase;
+    $_SERVER['DB_DATABASE'] = $tmpDatabase;
 }
 
 // Bootstrap Laravel and handle the request...
