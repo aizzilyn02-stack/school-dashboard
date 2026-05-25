@@ -71,11 +71,15 @@ if (!empty(getenv('VERCEL'))) {
         if (file_exists($sourcePath)) {
             if (! file_exists($dest) || filemtime($sourcePath) > filemtime($dest)) {
                 @copy($sourcePath, $dest);
+                error_log("[lambda] Copied cache $sourcePath -> $dest");
+            } else {
+                error_log("[lambda] Cache dest exists and is up-to-date: $dest");
             }
         } else {
             // If no source cache exists in the repo, unset the env var so Laravel won't try to load a missing cache file.
             putenv($envKey.'=');
             unset($_ENV[$envKey], $_SERVER[$envKey]);
+            error_log("[lambda] Unset env $envKey because source cache missing");
         }
     }
 
@@ -84,6 +88,9 @@ if (!empty(getenv('VERCEL'))) {
     if ($viewCompiled && ! file_exists($viewCompiled)) {
         @mkdir($viewCompiled, 0755, true);
     }
+
+    error_log('[lambda] DB_DATABASE=' . getenv('DB_DATABASE'));
+    error_log('[lambda] SESSION_DRIVER=' . getenv('SESSION_DRIVER'));
 
     // Force cookie sessions on Vercel to avoid relying on an ephemeral SQLite sessions table.
     putenv('SESSION_DRIVER=cookie');
