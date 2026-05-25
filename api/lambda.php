@@ -51,6 +51,11 @@ if (!empty(getenv('VERCEL'))) {
     putenv("DB_DATABASE=$tmpDatabase");
     $_ENV['DB_DATABASE'] = $tmpDatabase;
     $_SERVER['DB_DATABASE'] = $tmpDatabase;
+
+    // Force cookie sessions on Vercel to avoid relying on an ephemeral SQLite sessions table.
+    putenv('SESSION_DRIVER=cookie');
+    $_ENV['SESSION_DRIVER'] = 'cookie';
+    $_SERVER['SESSION_DRIVER'] = 'cookie';
 }
 
 // Bootstrap Laravel and handle the request...
