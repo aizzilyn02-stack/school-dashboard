@@ -52,6 +52,39 @@ if (!empty(getenv('VERCEL'))) {
     $_ENV['DB_DATABASE'] = $tmpDatabase;
     $_SERVER['DB_DATABASE'] = $tmpDatabase;
 
+    // Ensure any APP_*_CACHE env vars pointing to /tmp have actual files.
+    $cacheSources = [
+        'APP_CONFIG_CACHE' => __DIR__.'/../bootstrap/cache/config.php',
+        'APP_ROUTES_CACHE' => __DIR__.'/../bootstrap/cache/routes.php',
+        'APP_EVENTS_CACHE' => __DIR__.'/../bootstrap/cache/events.php',
+        'APP_PACKAGES_CACHE' => __DIR__.'/../bootstrap/cache/packages.php',
+        'APP_SERVICES_CACHE' => __DIR__.'/../bootstrap/cache/services.php',
+    ];
+
+    foreach ($cacheSources as $envKey => $sourcePath) {
+        $dest = getenv($envKey);
+        if ($dest === false || $dest === '') {
+            continue;
+        }
+
+        // If we have a local cached file in the repo, copy it to the /tmp destination.
+        if (file_exists($sourcePath)) {
+            if (! file_exists($dest) || filemtime($sourcePath) > filemtime($dest)) {
+                @copy($sourcePath, $dest);
+            }
+        } else {
+            // If no source cache exists in the repo, unset the env var so Laravel won't try to load a missing cache file.
+            putenv($envKey.'=');
+            unset($_ENV[$envKey], $_SERVER[$envKey]);
+        }
+    }
+
+    // Ensure compiled view path exists when set to /tmp
+    $viewCompiled = getenv('VIEW_COMPILED_PATH');
+    if ($viewCompiled && ! file_exists($viewCompiled)) {
+        @mkdir($viewCompiled, 0755, true);
+    }
+
     // Force cookie sessions on Vercel to avoid relying on an ephemeral SQLite sessions table.
     putenv('SESSION_DRIVER=cookie');
     $_ENV['SESSION_DRIVER'] = 'cookie';
