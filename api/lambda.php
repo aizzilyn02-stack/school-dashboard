@@ -30,11 +30,20 @@ error_log('[lambda] after composer autoload');
         unset($_ENV[$k], $_SERVER[$k]);
     }
 
+    $tmpDirectory = file_exists('/tmp') ? '/tmp' : sys_get_temp_dir();
+    foreach (['APP_CONFIG_CACHE','APP_ROUTES_CACHE','APP_EVENTS_CACHE','APP_PACKAGES_CACHE','APP_SERVICES_CACHE'] as $k) {
+        $disabledPath = $tmpDirectory.'/laravel-disabled-'.strtolower($k).'.php';
+        putenv("$k=$disabledPath");
+        $_ENV[$k] = $disabledPath;
+        $_SERVER[$k] = $disabledPath;
+    }
+
     // Force cookie sessions early so config/session.php resolves to cookie on Vercel.
     putenv('SESSION_DRIVER=cookie');
     $_ENV['SESSION_DRIVER'] = 'cookie';
     $_SERVER['SESSION_DRIVER'] = 'cookie';
     error_log('[lambda] Early forced SESSION_DRIVER=' . getenv('SESSION_DRIVER'));
+    error_log('[lambda] Disabled cache envs: ' . implode(', ', array_map(fn($k) => "$k=".getenv($k), ['APP_CONFIG_CACHE','APP_ROUTES_CACHE','APP_EVENTS_CACHE','APP_PACKAGES_CACHE','APP_SERVICES_CACHE'])));
 
 if (!empty(getenv('VERCEL'))) {
     $logChannel = getenv('LOG_CHANNEL');
