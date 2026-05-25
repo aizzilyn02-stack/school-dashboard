@@ -1,15 +1,15 @@
 {
-        "$schema": "https://openapi.vercel.sh/vercel.json",
-        "outputDirectory": "public",
-        "functions": {
-            "api/lambda.php": {
-                "runtime": "vercel-php@0.7.4"
-            }    
-        },
-        "rewrites": [
-            {
-                "source": "/(.*)",
-                "destination": "/api/lambda.php"
-            }
-        ]
+    "$schema": "https://openapi.vercel.sh/vercel.json",
+    "outputDirectory": "public",
+    "functions": {
+        "api/lambda.php": {
+            "runtime": "vercel-php@0.7.4"
+        }
+    },
+    "rewrites": [
+        {
+            "source": "/(?!build/|favicon\\.ico|favicon\\.svg|robots\\.txt|apple-touch-icon\\.png|apple-touch-icon-precomposed\\.png|_boost/).*",
+            "destination": "/api/lambda.php"
+        }
+    ]
 }

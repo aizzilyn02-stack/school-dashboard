@@ -5,13 +5,24 @@ use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
+error_log('[lambda] boot start');
+error_log('[lambda] cwd=' . getcwd());
+error_log('[lambda] api path=' . __DIR__);
+error_log('[lambda] root path=' . dirname(__DIR__));
+error_log('[lambda] VERCEL=' . var_export(getenv('VERCEL'), true));
+error_log('[lambda] initial APP_CONFIG_CACHE=' . var_export(getenv('APP_CONFIG_CACHE'), true));
+error_log('[lambda] initial APP_ROUTES_CACHE=' . var_export(getenv('APP_ROUTES_CACHE'), true));
+error_log('[lambda] initial VIEW_COMPILED_PATH=' . var_export(getenv('VIEW_COMPILED_PATH'), true));
+
 // Determine if the application is in maintenance mode...
 if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
     require $maintenance;
 }
 
 // Register the Composer autoloader...
+error_log('[lambda] vendor/autoload exists=' . var_export(file_exists(__DIR__.'/../vendor/autoload.php'), true));
 require __DIR__.'/../vendor/autoload.php';
+error_log('[lambda] after composer autoload');
 
     // Prevent Laravel from loading potentially invalid cache paths in serverless envs.
     foreach (['APP_CONFIG_CACHE','APP_ROUTES_CACHE','APP_EVENTS_CACHE','APP_PACKAGES_CACHE','APP_SERVICES_CACHE','VIEW_COMPILED_PATH'] as $k) {
@@ -34,7 +45,8 @@ if (!empty(getenv('VERCEL'))) {
     }
 
     $sourceDatabase = __DIR__.'/../database/database.sqlite';
-    $tmpDatabase = '/tmp/database.sqlite';
+    $tmpDirectory = file_exists('/tmp') ? '/tmp' : sys_get_temp_dir();
+    $tmpDatabase = $tmpDirectory.'/database.sqlite';
     if (file_exists($sourceDatabase)) {
         $shouldCopy = false;
         if (!file_exists($tmpDatabase) || filesize($tmpDatabase) === 0) {
@@ -133,16 +145,26 @@ if (!empty(getenv('VERCEL'))) {
 
 // Bootstrap Laravel and handle the request...
 /** @var Application $app */
+error_log('[lambda] bootstrap exists=' . var_export(file_exists(__DIR__.'/../bootstrap/app.php'), true));
 $app = require_once __DIR__.'/../bootstrap/app.php';
+error_log('[lambda] app booted');
 
 if (! empty(getenv('VERCEL'))) {
     $app->afterBootstrapping(
         \Illuminate\Foundation\Bootstrap\LoadConfiguration::class,
         function () use ($app, $tmpDatabase) {
+            error_log('[lambda] after LoadConfiguration bootstrap');
             $app['config']->set('session.driver', 'cookie');
             $app['config']->set('database.connections.sqlite.database', $tmpDatabase);
         }
     );
 }
 
-$app->handleRequest(Request::capture());
+try {
+    $response = $app->handleRequest(Request::capture());
+    error_log('[lambda] request handled');
+} catch (Throwable $e) {
+    error_log('[lambda] handleRequest threw ' . $e::class . ': ' . $e->getMessage());
+    error_log($e->getTraceAsString());
+    throw $e;
+}
