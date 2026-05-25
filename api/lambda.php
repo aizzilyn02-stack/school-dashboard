@@ -15,9 +15,15 @@ require __DIR__.'/../vendor/autoload.php';
 
     // Prevent Laravel from loading potentially invalid cache paths in serverless envs.
     foreach (['APP_CONFIG_CACHE','APP_ROUTES_CACHE','APP_EVENTS_CACHE','APP_PACKAGES_CACHE','APP_SERVICES_CACHE','VIEW_COMPILED_PATH'] as $k) {
-        putenv($k.'=');
+        putenv($k);
         unset($_ENV[$k], $_SERVER[$k]);
     }
+
+    // Force cookie sessions early so config/session.php resolves to cookie on Vercel.
+    putenv('SESSION_DRIVER=cookie');
+    $_ENV['SESSION_DRIVER'] = 'cookie';
+    $_SERVER['SESSION_DRIVER'] = 'cookie';
+    error_log('[lambda] Early forced SESSION_DRIVER=' . getenv('SESSION_DRIVER'));
 
 if (!empty(getenv('VERCEL'))) {
     $logChannel = getenv('LOG_CHANNEL');
@@ -77,7 +83,7 @@ if (!empty(getenv('VERCEL'))) {
         if (file_exists($sourcePath)) {
             // If the destination is a directory (or looks invalid), unset the env value.
             if (is_dir($dest)) {
-                putenv($envKey.'=');
+                putenv($envKey);
                 unset($_ENV[$envKey], $_SERVER[$envKey]);
                 error_log("[lambda] Unset env $envKey because destination is a directory: $dest");
                 continue;
@@ -95,7 +101,7 @@ if (!empty(getenv('VERCEL'))) {
                     error_log("[lambda] Copied cache $sourcePath -> $dest");
                 } else {
                     // Copy failed or dest is not a file; unset env to avoid Laravel requiring a directory
-                    putenv($envKey.'=');
+                    putenv($envKey);
                     unset($_ENV[$envKey], $_SERVER[$envKey]);
                     error_log("[lambda] Failed to copy cache $sourcePath -> $dest; env unset");
                 }
@@ -104,7 +110,7 @@ if (!empty(getenv('VERCEL'))) {
             }
         } else {
             // If no source cache exists in the repo, unset the env var so Laravel won't try to load a missing cache file.
-            putenv($envKey.'=');
+            putenv($envKey);
             unset($_ENV[$envKey], $_SERVER[$envKey]);
             error_log("[lambda] Unset env $envKey because source cache missing");
         }
